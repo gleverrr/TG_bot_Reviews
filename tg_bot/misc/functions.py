@@ -1,5 +1,4 @@
 import os
-import os
 import requests
 from aiogram import Bot, types
 from aiogram.fsm.context import FSMContext

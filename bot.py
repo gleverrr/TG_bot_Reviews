@@ -32,11 +32,10 @@ User = get_user_class()
 async def start_add_review(message: Message, state: FSMContext):
     user_id = str(message.from_user.id)
     account = session.query(User).filter(User.tg == user_id).first() 
-    global db_user_id 
     if (account):
         db_user_id = account.id
+        await state.update_data(db_user_id = db_user_id)
         articles = session.query(Order).filter((Order.buyer_id == db_user_id) & (Order.marketplace == "WB") & (Order.status == 5)).distinct(Order.article).all()
-        global accept_articles
         accept_articles = [] 
         buttons = []
         row = []
@@ -49,12 +48,12 @@ async def start_add_review(message: Message, state: FSMContext):
         
         if row:
             buttons.append(row)
-        global articles_keyboard
         articles_keyboard = ReplyKeyboardMarkup(
             keyboard=buttons,
             resize_keyboard=True,
             one_time_keyboard=True
         )
+        await state.update_data(articles_keyboard = articles_keyboard, accept_articles = accept_articles)
         await message.answer("Выберите артикул:", reply_markup=articles_keyboard)
         await state.set_state(ReviewStates.article)
     else :
@@ -63,16 +62,22 @@ async def start_add_review(message: Message, state: FSMContext):
 @router.message(ReviewStates.article)
 async def get_article_message(message: Message,state: FSMContext):
     try:
+        data = await state.get_data()
+        accept_articles = data.get('accept_articles')
         chosen_article = int( message.text)
         if chosen_article in accept_articles:
-            global change_order
+            db_user_id = data.get('db_user_id')
             change_order = session.query(Order).filter((Order.article == chosen_article) & (Order.buyer_id == db_user_id) & (Order.marketplace == "WB") & (Order.status == 5)).distinct(Order.article).first()
             await message.answer("Загрузите фотографии (до 2 штук)", reply_markup=get_keyboard_photo())
             await state.update_data(order_id=change_order.id)
             await state.set_state(ReviewStates.waiting_for_photos)
         else:
+            data = await state.get_data()
+            articles_keyboard = data.get('articles_keyboard')
             await message.answer("Выберите корректный артикул", reply_markup=articles_keyboard)
     except ValueError:
+        data = await state.get_data()
+        articles_keyboard = data.get('articles_keyboard')
         await message.answer("Выберите корректный артикул", reply_markup=articles_keyboard)
 
 @router.message(ReviewStates.waiting_for_photos)

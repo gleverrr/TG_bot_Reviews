@@ -1,25 +1,21 @@
-import logging
+from config import Config
 from datetime import datetime, timedelta
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
-import os
-from dotenv import load_dotenv
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, Message
-from tg_bot.keyboards.review_kb import (
+from tg_bot.keyboards import (
     get_keyboard_photo,
     get_keyboard_photo2,
     get_keyboard_video,
     get_keyboard_confirm,
 )
-from tg_bot.states.review_states import ReviewStates
+from tg_bot.states import ReviewStates
 from aiogram.fsm.context import FSMContext
-from tg_bot.misc.functions import filling_bd_handler
-from tg_bot.models.db_connection import get_db_session
-from tg_bot.models.models import get_user_class, get_order_class
+from tg_bot.misc import filling_bd_handler
+from tg_bot.models import get_db_session, get_user_class, get_order_class
 
 
 async def start_add_review(message: Message, state: FSMContext):
-    state.clear()
     user_id = str(message.from_user.id)
     User = get_user_class()
     session = get_db_session()
@@ -46,7 +42,7 @@ async def start_add_review(message: Message, state: FSMContext):
         row = []
         for artic in articles:
             accept_articles.append(artic.article)
-            row.append(KeyboardButton(text=artic.article))
+            row.append(KeyboardButton(text=str(artic.article)))
             if len(row) == 2:
                 buttons.append(row)
                 row = []
@@ -205,9 +201,7 @@ async def confirmation_handler(message: types.Message, state: FSMContext, bot: B
             "Хорошо! Ваш отзыв успешно сохранен",
             reply_markup=types.ReplyKeyboardRemove(),
         )
-        load_dotenv()
-        logging.basicConfig(level=logging.INFO)
-        BOT_TOKEN = os.getenv("BOT_TOKEN")
+        BOT_TOKEN = Config.BOT_TOKEN
         await filling_bd_handler(state, bot, BOT_TOKEN)
         await state.clear()
     elif message.text == "Хочу отменить этот отзыв":
